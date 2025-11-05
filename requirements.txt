@@ -1,0 +1,8 @@
+Flask==2.3.3
+opencv-python-headless==4.8.1.78
+ultralytics==8.0.196
+Pillow==10.0.1
+numpy==1.24.3
+pytest==7.4.2
+pytest-cov==4.1.0
+gunicorn==21.2.0

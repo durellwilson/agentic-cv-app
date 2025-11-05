@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Computer Vision</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .video-section, .upload-section { background: #2a2a2a; padding: 20px; border-radius: 10px; }
+        .analysis-panel { background: #333; padding: 15px; border-radius: 5px; margin-top: 15px; }
+        #videoFeed { width: 100%; max-width: 640px; border-radius: 5px; }
+        #uploadImage { margin: 10px 0; }
+        .detection-item { background: #444; padding: 8px; margin: 5px 0; border-radius: 3px; }
+        .confidence { color: #4CAF50; font-weight: bold; }
+        .scene-type { color: #FF9800; font-size: 1.2em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agentic Computer Vision System</h1>
+            <p>Real-time object detection and intelligent scene analysis</p>
+        </div>
+
+        <div class="controls">
+            <button onclick="startCamera()">Start Camera</button>
+            <button onclick="stopCamera()">Stop Camera</button>
+            <button onclick="refreshAnalysis()">Refresh Analysis</button>
+        </div>
+
+        <div class="content">
+            <div class="video-section">
+                <h3>Live Camera Feed</h3>
+                <img id="videoFeed" src="/video_feed" alt="Video feed will appear here">
+                
+                <div class="analysis-panel">
+                    <h4>Real-time Analysis</h4>
+                    <div id="liveAnalysis">
+                        <p>Start camera to see live analysis...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <h3>Image Upload & Analysis</h3>
+                <input type="file" id="uploadImage" accept="image/*">
+                <button onclick="uploadImage()">Analyze Image</button>
+                
+                <div id="uploadResult" style="margin-top: 15px;">
+                    <img id="processedImage" style="width: 100%; max-width: 400px; display: none; border-radius: 5px;">
+                </div>
+
+                <div class="analysis-panel">
+                    <h4>Upload Analysis</h4>
+                    <div id="uploadAnalysis">
+                        <p>Upload an image to see analysis...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startCamera() {
+            fetch('/start_camera')
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.status);
+                    document.getElementById('videoFeed').src = '/video_feed?' + new Date().getTime();
+                    startAnalysisUpdates();
+                });
+        }
+
+        function stopCamera() {
+            fetch('/stop_camera')
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.status);
+                    document.getElementById('videoFeed').src = '';
+                });
+        }
+
+        function uploadImage() {
+            const fileInput = document.getElementById('uploadImage');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select an image first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('processedImage').src = 'data:image/jpeg;base64,' + data.processed_image;
+                document.getElementById('processedImage').style.display = 'block';
+                
+                displayAnalysis(data.analysis, data.detections, 'uploadAnalysis');
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function refreshAnalysis() {
+            fetch('/get_analysis')
+                .then(response => response.json())
+                .then(data => {
+                    if (Object.keys(data).length > 0) {
+                        displayAnalysis(data, [], 'liveAnalysis');
+                    }
+                });
+        }
+
+        function displayAnalysis(analysis, detections, elementId) {
+            const element = document.getElementById(elementId);
+            
+            let html = `
+                <div class="scene-type">Scene: ${analysis.scene_type || 'Unknown'}</div>
+                <p><strong>Objects Detected:</strong> ${analysis.object_count || 0}</p>
+            `;
+            
+            if (analysis.objects && analysis.objects.length > 0) {
+                html += '<p><strong>Object Types:</strong></p>';
+                const objectCounts = {};
+                analysis.objects.forEach(obj => {
+                    objectCounts[obj] = (objectCounts[obj] || 0) + 1;
+                });
+                
+                for (const [obj, count] of Object.entries(objectCounts)) {
+                    html += `<div class="detection-item">${obj} (${count})</div>`;
+                }
+            }
+            
+            if (analysis.high_confidence && analysis.high_confidence.length > 0) {
+                html += '<p><strong>High Confidence Detections:</strong></p>';
+                analysis.high_confidence.forEach(det => {
+                    html += `<div class="detection-item">
+                        ${det.class} <span class="confidence">${(det.confidence * 100).toFixed(1)}%</span>
+                    </div>`;
+                });
+            }
+            
+            element.innerHTML = html;
+        }
+
+        function startAnalysisUpdates() {
+            setInterval(refreshAnalysis, 2000); // Update every 2 seconds
+        }
+    </script>
+</body>
+</html>
