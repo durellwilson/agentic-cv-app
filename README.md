@@ -36,3 +36,4 @@ Open http://localhost:5000
 - **Responsive Frontend**: Real-time visualization
 
 The app demonstrates agentic AI by autonomously analyzing scenes, categorizing environments, and providing intelligent insights about detected objects.
+# CI/CD Status: Active
